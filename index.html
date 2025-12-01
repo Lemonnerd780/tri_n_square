@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Neon Reflex Fixed</title>
+    <title>Neon Reflex Final</title>
     <style>
         /* --- 基础设置 --- */
         body {
             margin: 0; padding: 0;
             background-color: #050505;
             overflow: hidden;
-            font-family: sans-serif;
-            touch-action: none; /* 禁止缩放和滚动 */
+            font-family: 'Segoe UI', sans-serif;
+            touch-action: none; 
             user-select: none;
             -webkit-user-select: none;
             width: 100vw; height: 100vh;
@@ -22,210 +22,204 @@
             position: absolute;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            z-index: 1; /* 确保在背景之上 */
-            overflow: hidden;
+            z-index: 1;
         }
 
-        /* 顶部 HUD 面板 */
+        /* HUD 面板 */
         #ui-panel {
             position: absolute;
             top: 0; left: 0; width: 100%;
             padding: 10px 20px;
-            padding-top: max(10px, env(safe-area-inset-top)); /* 适配刘海屏 */
+            padding-top: max(15px, env(safe-area-inset-top));
             box-sizing: border-box;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 20; /* 最高层级 */
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
-            pointer-events: none; /* 让点击穿透面板 */
+            z-index: 20;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+            pointer-events: none;
         }
 
         .hud-text {
             color: #00d2ff;
-            font-weight: bold;
+            font-weight: 800;
             font-size: 16px;
-            text-shadow: 0 0 5px rgba(0, 210, 255, 0.8);
+            text-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
             display: flex; flex-direction: column; align-items: center;
         }
-        .hud-label { font-size: 10px; color: #888; margin-bottom: 2px; }
+        .hud-label { font-size: 10px; color: #666; margin-bottom: 2px; letter-spacing: 1px; }
 
         /* --- 弹窗样式 --- */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 100;
             display: flex; justify-content: center; align-items: center;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(5px);
         }
 
         .modal-content {
             background: #111;
             border: 2px solid #00d2ff;
             border-radius: 12px;
-            padding: 25px;
-            width: 80%; max-width: 320px;
+            padding: 30px 20px;
+            width: 85%; max-width: 320px;
             text-align: center;
             color: white;
             box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);
+            animation: float 3s ease-in-out infinite;
         }
+        @keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
 
-        h1 { margin: 0 0 15px 0; color: #00d2ff; font-size: 24px; text-transform: uppercase; }
-        p { color: #ccc; font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+        h1 { margin: 0 0 15px 0; color: #00d2ff; font-size: 26px; text-transform: uppercase; letter-spacing: 2px; }
+        p { color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 25px; }
         
         .btn {
             background: #0044aa; color: white;
-            padding: 12px 30px; border-radius: 50px;
+            padding: 14px 0; width: 100%; border-radius: 8px;
             border: none; font-weight: bold; font-size: 16px;
             margin-top: 10px; cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 100, 255, 0.5);
+            box-shadow: 0 4px 15px rgba(0, 100, 255, 0.4);
+            text-transform: uppercase; letter-spacing: 1px;
         }
-        .btn:active { transform: scale(0.95); }
+        .btn:active { transform: scale(0.98); }
 
-        /* 规则图标说明 */
-        .rules { text-align: left; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+        .rules { text-align: left; background: rgba(255,255,255,0.08); padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .rule-row { display: flex; align-items: center; margin: 8px 0; font-size: 14px; }
-        .icon-demo { width: 14px; height: 14px; margin-right: 10px; display: inline-block; }
-        
+        .icon-demo { width: 16px; height: 16px; margin-right: 12px; display: inline-block; }
+
         /* --- 图形样式 --- */
         .shape {
             position: absolute;
-            /* 关键修复：初始不缩放为0，防止动画失败看不见 */
             opacity: 0; 
-            transform: scale(0.5);
-            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+            transform: scale(0.8);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
             will-change: transform, opacity;
-            /* 增大点击判定区域 */
         }
 
-        /* 激活状态（由JS添加） */
-        .shape.active {
-            opacity: 1;
-            transform: scale(1);
-        }
+        .shape.active { opacity: 1; transform: scale(1); }
 
-        /* 正方形 */
         .square {
-            width: 70px; height: 70px;
-            background: rgba(0, 60, 150, 0.9);
+            width: 75px; height: 75px;
+            background: rgba(0, 40, 100, 0.9);
             border: 2px solid #00d2ff;
-            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
-            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+            border-radius: 6px;
         }
 
-        /* 三角形 - 使用 clip-path 切割 */
         .triangle {
-            width: 70px; height: 70px;
+            width: 80px; height: 80px;
             background: linear-gradient(180deg, #00d2ff 0%, #0044aa 100%);
             clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-            /* 移除 border，因为 clip-path 会切掉边框，改用 filter 发光 */
-            filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.8));
+            filter: drop-shadow(0 0 6px rgba(0, 210, 255, 0.6));
         }
 
-        /* 最后一关的特殊样式 */
-        .danger-mode .triangle { background: linear-gradient(180deg, #00d2ff 0%, #0044aa 100%); }
-        .danger-mode .square { border-color: #00d2ff; background: #0044aa(100, 0, 0, 0.8); }
+        /* 最后一关样式 */
+        .danger-mode .triangle { background: linear-gradient(180deg, #ff4444 0%, #aa0000 100%); }
+        .danger-mode .square { border-color: #ff4444; background: rgba(80, 0, 0, 0.9); }
+        .danger-mode #ui-panel .hud-text { color: #ff4444; text-shadow: 0 0 8px rgba(255, 0, 0, 0.6); }
 
-        /* 点击波纹特效 */
-        .ripple {
+        /* 错误提示文字 */
+        .error-feedback {
             position: absolute;
-            width: 20px; height: 20px;
-            background: white; border-radius: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            animation: rippleAnim 0.4s linear forwards;
-            z-index: 99;
+            color: #ff0044; font-weight: 900; font-size: 18px;
+            text-transform: uppercase; pointer-events: none; z-index: 99;
+            text-shadow: 1px 1px 0 #000;
+            animation: errorFloat 0.6s ease-out forwards;
         }
-        @keyframes rippleAnim {
-            0% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(5); }
+        @keyframes errorFloat { 0%{transform:translate(-50%, -50%) scale(0.5); opacity:1;} 100%{transform:translate(-50%, -150%) scale(1.5); opacity:0;} }
+
+        /* 点击波纹 */
+        .ripple {
+            position: absolute; width: 20px; height: 20px;
+            background: rgba(255,255,255,0.8); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 98;
+            animation: rippleAnim 0.4s ease-out forwards;
         }
+        @keyframes rippleAnim { to { transform: translate(-50%, -50%) scale(4); opacity: 0; } }
 
     </style>
 </head>
 <body>
 
-    <!-- HUD -->
     <div id="ui-panel">
         <div class="hud-text"><span class="hud-label">LEVEL</span><span id="txt-level">1/6</span></div>
         <div class="hud-text"><span class="hud-label">TIME</span><span id="txt-time">30</span></div>
         <div class="hud-text"><span class="hud-label">MISSED</span><span id="txt-miss">0/5</span></div>
     </div>
 
-    <!-- Game Container -->
     <div id="game-area"></div>
 
-    <!-- 1. Start Modal -->
+    <!-- 弹窗 1: 开始 -->
     <div id="modal-start" class="modal">
         <div class="modal-content">
-            <h1>Whac-A-Mole Plus</h1>
-            <p>Tap shapes before they vanish. You can do this;)</p>
+            <h1>Neon Reflex</h1>
+            <p>Rules are simple.</p>
             <div class="rules">
-                <div class="rule-row">
-                    <div class="icon-demo triangle"></div>
-                    <span>Triangle: <b>1 Tap</b></span>
-                </div>
-                <div class="rule-row">
-                    <div class="icon-demo square"></div>
-                    <span>Square: <b>2 Taps</b></span>
-                </div>
+                <div class="rule-row"><div class="icon-demo triangle"></div><span>Triangle: <b>1 TAP</b></span></div>
+                <div class="rule-row"><div class="icon-demo square"></div><span>Square: <b>2 TAPS</b></span></div>
             </div>
-            <div class="btn" onclick="startGame(1)">START GAME</div>
+            <p style="font-size:12px; color:#888;">* Don't double tap single targets!</p>
+            <button class="btn" onclick="startGame(1)">START GAME</button>
         </div>
     </div>
 
-    <!-- 2. Next Level Modal -->
+    <!-- 弹窗 2: 过关 -->
     <div id="modal-level" class="modal" style="display: none;">
         <div class="modal-content">
-            <h1>Level Clear</h1>
-            <p>Woooo! Great job! Speed is increasingggg.</p>
-            <div class="btn" onclick="nextLevel()">CONTINUE</div>
+            <h1 id="lvl-title">Level Clear</h1>
+            <p id="lvl-msg">Speed increasing...</p>
+            <button id="lvl-btn" class="btn" onclick="nextLevel()">CONTINUE</button>
         </div>
     </div>
 
-    <!-- 3. Final Level Warning -->
+    <!-- 弹窗 3: 最终警告 -->
     <div id="modal-final" class="modal" style="display: none;">
-        <div class="modal-content" style="border-color: #ff4444; box-shadow: 0 0 20px #ff0000;">
+        <div class="modal-content" style="border-color: #ff4444; box-shadow: 0 0 30px rgba(255,0,0,0.3);">
             <h1 style="color: #ff4444;">⚠️ WARNING</h1>
-            <p>THE RULE HAS CHANGED!<br>CONTROLS FLIPPED.</p>
-            <div class="rules" style="background: rgba(100,0,0,0.2);">
-                <div class="rule-row">
-                    <div class="icon-demo triangle" style="background: #ff4444;"></div>
-                    <span style="color:#ffaaaa">Triangle: <b>2 TAPS</b></span>
-                </div>
-                <div class="rule-row">
-                    <div class="icon-demo square" style="border-color:#ff4444"></div>
-                    <span style="color:#ffaaaa">Square: <b>1 TAP</b></span>
-                </div>
+            <p>SYSTEM CORRUPTED.<br>CONTROLS FLIPPED.</p>
+            <div class="rules" style="background: rgba(100,0,0,0.3);">
+                <div class="rule-row"><div class="icon-demo triangle" style="background: #ff4444;"></div><span style="color:#ffaaaa">Triangle: <b>2 TAPS</b></span></div>
+                <div class="rule-row"><div class="icon-demo square" style="border-color:#ff4444"></div><span style="color:#ffaaaa">Square: <b>1 TAP</b></span></div>
             </div>
-            <div class="btn" style="background: #cc0000;" onclick="startGame(6)">I AM READY</div>
+            <button class="btn" style="background: #cc0000;" onclick="startGame(6)">I AM READY</button>
         </div>
     </div>
 
-    <!-- 4. Game Over Modal -->
+    <!-- 弹窗 4: 游戏结束 -->
     <div id="modal-gameover" class="modal" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content" style="border-color: #666;">
             <h1 style="color: #888;">Mission Failed</h1>
-            <p id="msg-fail">Awwwww too many shapes missed:(</p>
-            <div class="btn" onclick="retryLevel()">RETRY?</div>
+            <p id="msg-fail">Too many errors.</p>
+            <button class="btn" style="background: #444;" onclick="retryLevel()">RETRY</button>
+        </div>
+    </div>
+
+    <!-- 弹窗 5: 通关 (新增) -->
+    <div id="modal-victory" class="modal" style="display: none;">
+        <div class="modal-content" style="border-color: #ffd700; box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);">
+            <h1 style="color: #ffd700;">CHAMPION!</h1>
+            <p>You have beaten the system.<br>Perfect reflexes.</p>
+            <button class="btn" style="background: #ffd700; color: #000;" onclick="location.reload()">PLAY AGAIN</button>
         </div>
     </div>
 
     <script>
-        // --- Game Config ---
+        // --- 游戏配置 ---
         const CONFIG = {
             maxMissed: 5,
-            levelTime: 30, // seconds
-            doubleTapTime: 350 // ms
+            levelTime: 30,
+            doubleTapTime: 350, // 双击判定的时间窗口 (ms)
+            shapeSize: 85 // 用于碰撞检测的预估尺寸 (比实际略大一点以留空隙)
         };
 
-        // --- Global State ---
+        // --- 全局状态 ---
         let state = {
             level: 1,
             missed: 0,
             timeLeft: 30,
             isPlaying: false,
-            shapes: [],     // Array of shape objects
+            shapes: [],     
             idCounter: 0,
             lastFrameTime: 0,
             spawnTimer: 0
@@ -234,34 +228,34 @@
         let timerInterval = null;
         let animationFrame = null;
 
-        // --- DOM Elements ---
         const gameArea = document.getElementById('game-area');
         const txtLevel = document.getElementById('txt-level');
         const txtTime = document.getElementById('txt-time');
         const txtMiss = document.getElementById('txt-miss');
 
-        // --- Core Functions ---
+        // --- 游戏流程控制 ---
 
         function startGame(level) {
-            // Hide all modals
+            // 隐藏所有弹窗
             document.querySelectorAll('.modal').forEach(el => el.style.display = 'none');
             
-            // Apply Red Theme for Level 6
+            // 设置第6关的红色主题
             if(level === 6) document.body.classList.add('danger-mode');
             else document.body.classList.remove('danger-mode');
 
-            // Reset State
+            // 重置数据
             state.level = level;
             state.missed = 0;
             state.timeLeft = CONFIG.levelTime;
             state.isPlaying = true;
             state.shapes = [];
-            state.spawnTimer = 9999; // Force immediate spawn on first frame
-            gameArea.innerHTML = ''; // Clear board
+            state.spawnTimer = 9999; // 确保第一帧立即生成
+            state.idCounter = 0;
+            gameArea.innerHTML = ''; 
 
             updateHUD();
 
-            // Start Timer
+            // 启动倒计时
             if(timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 state.timeLeft--;
@@ -269,7 +263,7 @@
                 if(state.timeLeft <= 0) finishLevel(true);
             }, 1000);
 
-            // Start Loop
+            // 启动游戏循环
             if(animationFrame) cancelAnimationFrame(animationFrame);
             state.lastFrameTime = performance.now();
             requestAnimationFrame(gameLoop);
@@ -278,7 +272,6 @@
         function nextLevel() {
             if(state.level < 5) startGame(state.level + 1);
             else if(state.level === 5) {
-                // Show Final Warning
                 document.getElementById('modal-level').style.display = 'none';
                 document.getElementById('modal-final').style.display = 'flex';
             }
@@ -295,23 +288,17 @@
 
             if(success) {
                 if(state.level === 6) {
-                    // Victory
-                    document.querySelector('#modal-level h1').innerText = "VICTORY";
-                    document.querySelector('#modal-level p').innerText = "Congrats! Now you can ask Judy for a reward;)";
-                    document.querySelector('#modal-level .btn').innerText = "PLAY AGAIN";
-                    document.querySelector('#modal-level .btn').onclick = () => location.reload();
-                    document.getElementById('modal-level').style.display = 'flex';
+                    // 通关
+                    document.getElementById('modal-victory').style.display = 'flex';
                 } else {
-                    // Next Level
-                    document.querySelector('#modal-level h1').innerText = "LEVEL COMPLETE";
-                    document.querySelector('#modal-level p').innerText = `Missed: ${state.missed}`;
-                    document.querySelector('#modal-level .btn').innerText = "CONTINUE";
-                    document.querySelector('#modal-level .btn').onclick = nextLevel;
+                    // 下一关
+                    document.getElementById('lvl-title').innerText = "LEVEL CLEAR";
+                    document.getElementById('lvl-msg').innerText = `Missed: ${state.missed} / ${CONFIG.maxMissed}`;
                     document.getElementById('modal-level').style.display = 'flex';
                 }
             } else {
-                // Failed
-                document.getElementById('msg-fail').innerText = `Missed ${state.missed} shapes.`;
+                // 失败
+                document.getElementById('msg-fail').innerText = `Missed ${state.missed} targets.`;
                 document.getElementById('modal-gameover').style.display = 'flex';
             }
         }
@@ -320,10 +307,10 @@
             txtLevel.innerText = `${state.level}/6`;
             txtTime.innerText = state.timeLeft;
             txtMiss.innerText = `${state.missed}/${CONFIG.maxMissed}`;
-            txtMiss.style.color = state.missed >= 3 ? '#ff4444' : '#00d2ff';
+            txtMiss.style.color = state.missed >= 3 ? '#ff3333' : '#00d2ff';
         }
 
-        // --- Game Loop ---
+        // --- 核心循环 ---
 
         function gameLoop(now) {
             if(!state.isPlaying) return;
@@ -331,40 +318,46 @@
             const dt = now - state.lastFrameTime;
             state.lastFrameTime = now;
 
-            // 1. Calculate Spawn Rate
-            // Level 1: 900ms -> Level 6: 250ms
-            let spawnInterval = 900 - ((state.level - 1) * 120);
-            if(state.level === 6) spawnInterval = 250;
-            if(spawnInterval < 200) spawnInterval = 200;
+            // 1. 难度参数计算
+            let spawnInterval, maxLife;
 
-            // 2. Calculate Life Time (How fast they fade)
-            // Level 1: 3000ms -> Level 6: 1200ms
-            let maxLife = 3000 - ((state.level - 1) * 300);
-            if(state.level === 6) maxLife = 1200;
+            if (state.level < 6) {
+                // 前5关线性增加难度
+                spawnInterval = 900 - ((state.level - 1) * 120); // 900 -> 420
+                maxLife = 3000 - ((state.level - 1) * 300);      // 3000 -> 1800
+            } else {
+                // 第6关 (最终关) - 已稍微降低速度
+                spawnInterval = 550; // 生成速度 (之前是250太快了)
+                maxLife = 1600;      // 存活时间 (之前是1200太短了)
+            }
 
-            // 3. Spawning Logic
+            // 2. 生成逻辑
             state.spawnTimer += dt;
             if(state.spawnTimer > spawnInterval) {
                 spawnShape(maxLife);
-                state.spawnTimer = 0 - (Math.random() * 200); // Add randomness
+                state.spawnTimer = 0 - (Math.random() * 200); // 增加一点随机间隔
             }
 
-            // 4. Update Shapes
+            // 3. 更新所有图形状态
             const shapesToRemove = [];
             state.shapes.forEach(shape => {
                 shape.life -= dt;
                 
-                // Fade out effect
-                const opacity = shape.life / shape.maxLife;
-                if(shape.element) shape.element.style.opacity = opacity;
+                // 变透明逻辑
+                if(shape.element) {
+                    shape.element.style.opacity = shape.life / shape.maxLife;
+                }
 
+                // 消失逻辑
                 if(shape.life <= 0) {
+                    // 只有当它还没被标记为“濒死(成功待定)”时，才算Miss
+                    if (!shape.isDying) {
+                        handleMiss();
+                    }
                     shapesToRemove.push(shape.id);
-                    handleMiss();
                 }
             });
 
-            // Cleanup
             shapesToRemove.forEach(id => removeShape(id));
 
             animationFrame = requestAnimationFrame(gameLoop);
@@ -374,79 +367,144 @@
             const id = ++state.idCounter;
             const isSquare = Math.random() > 0.5;
             
-            const el = document.createElement('div');
-            el.className = `shape ${isSquare ? 'square' : 'triangle'}`;
-            
-            // --- Safe Position Calculation ---
-            const size = 80; // slightly larger than CSS to be safe
+            // --- 碰撞检测与位置计算 ---
             const screenW = gameArea.clientWidth;
             const screenH = gameArea.clientHeight;
-            
-            // Padding to avoid edges and top UI
-            const padX = 20;
-            const topSafe = 100; // Leave room for HUD
+            const topSafe = 100; // 避开顶部HUD
             const bottomSafe = 50;
+            const padding = 10;
+            const shapeSize = CONFIG.shapeSize; // 85px
 
-            const x = Math.random() * (screenW - size - padX * 2) + padX;
-            const y = Math.random() * (screenH - size - topSafe - bottomSafe) + topSafe;
+            let x, y;
+            let isOverlapping = true;
+            let attempts = 0;
 
+            // 尝试 15 次寻找空位
+            while(isOverlapping && attempts < 15) {
+                attempts++;
+                // 随机生成坐标
+                x = Math.random() * (screenW - shapeSize - padding * 2) + padding;
+                y = Math.random() * (screenH - shapeSize - topSafe - bottomSafe) + topSafe;
+                
+                // 检查是否与现有图形重叠
+                isOverlapping = false;
+                for (let s of state.shapes) {
+                    // 简单的距离检查 (x,y是左上角，这里取中心点距离)
+                    const dx = (x + shapeSize/2) - (s.x + shapeSize/2);
+                    const dy = (y + shapeSize/2) - (s.y + shapeSize/2);
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (dist < shapeSize + 10) { // 保持至少10px间距
+                        isOverlapping = true;
+                        break;
+                    }
+                }
+            }
+
+            // 如果试了15次还是没地儿放，这帧就放弃生成，避免重叠
+            if (isOverlapping) return;
+
+            // --- 创建元素 ---
+            const el = document.createElement('div');
+            el.className = `shape ${isSquare ? 'square' : 'triangle'}`;
             el.style.left = x + 'px';
             el.style.top = y + 'px';
 
-            // Bind Events
-            bindInput(el, id, isSquare);
-
             gameArea.appendChild(el);
-
-            // Add 'active' class next frame to trigger CSS transition properly
+            // 下一帧添加active类以触发出现动画
             requestAnimationFrame(() => el.classList.add('active'));
 
-            state.shapes.push({ id, element: el, life: maxLife, maxLife });
+            const shapeObj = { 
+                id, 
+                element: el, 
+                life: maxLife, 
+                maxLife, 
+                x, y, // 存坐标用于碰撞检测
+                isSquare,
+                isDying: false,   // 是否处于单击后的判定等待期
+                deathTimer: null  // 判定等待定时器
+            };
+
+            bindInput(el, shapeObj);
+            state.shapes.push(shapeObj);
         }
 
-        function bindInput(el, id, isSquare) {
+        function bindInput(el, shape) {
             let lastTap = 0;
 
             el.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Stop zoom
+                e.preventDefault(); 
                 const touch = e.touches[0];
                 createRipple(touch.clientX, touch.clientY);
 
                 const now = Date.now();
                 const timeDiff = now - lastTap;
 
-                // Determine Rule
-                // Lvl 1-5: Tri=1, Sqr=2
-                // Lvl 6:   Tri=2, Sqr=1
+                // 判断是否需要双击
                 let needDouble = false;
-                if(state.level < 6) {
-                    needDouble = isSquare;
-                } else {
-                    needDouble = !isSquare; // Triangle needs double in Lvl 6
-                }
+                if(state.level < 6) needDouble = shape.isSquare; // 1-5关: 正方形双击
+                else needDouble = !shape.isSquare; // 6关: 三角形双击
 
-                if(!needDouble) {
-                    // Single Tap Rule
-                    removeShape(id);
+                if (!needDouble) {
+                    // --- 规则：只需单击 ---
+                    
+                    if (shape.isDying) {
+                        // 逻辑：已经在“濒死等待期”，玩家又点了一下 -> 判定为误操作(Overclick)
+                        clearTimeout(shape.deathTimer); // 取消原本的成功消除
+                        removeShape(shape.id);          // 立即移除图形
+                        handleMiss();                   // 扣分
+                        showErrorFeedback(touch.clientX, touch.clientY); // 显示错误提示
+                    } else {
+                        // 逻辑：这是第一次点击
+                        shape.isDying = true; 
+                        lastTap = now;
+
+                        // 视觉反馈：变灰，暗示“已击中”
+                        el.style.opacity = '0.4'; 
+                        el.style.filter = 'grayscale(100%)';
+                        el.style.transform = 'scale(0.9)';
+
+                        // 延迟判定成功，给用户时间去犯错（如果他点了第二下）
+                        shape.deathTimer = setTimeout(() => {
+                            removeShape(shape.id); // 真正的成功
+                        }, CONFIG.doubleTapTime + 50); 
+                    }
+
                 } else {
-                    // Double Tap Rule
+                    // --- 规则：需要双击 ---
+                    
                     if(timeDiff < CONFIG.doubleTapTime && timeDiff > 0) {
-                        removeShape(id); // Success
+                        // 双击成功
+                        removeShape(shape.id);
                         lastTap = 0;
                     } else {
+                        // 第一次点击
                         lastTap = now;
-                        // Visual feedback for first tap
-                        el.style.filter = "brightness(2) contrast(150%)";
-                        setTimeout(() => el.style.filter = "", 100);
+                        // 视觉反馈：高亮，暗示“再点一下”
+                        el.style.filter = "brightness(2)";
+                        el.style.transform = 'scale(1.1)';
+                        setTimeout(() => {
+                            if(shape.element) {
+                                shape.element.style.filter = "";
+                                shape.element.style.transform = "scale(1)";
+                            }
+                        }, 150);
                     }
                 }
             }, { passive: false });
         }
 
+        // --- 辅助函数 ---
+
+        // 移除图形（包含清理工作）
         function removeShape(id) {
             const idx = state.shapes.findIndex(s => s.id === id);
             if(idx !== -1) {
                 const s = state.shapes[idx];
+                
+                // 清理定时器，防止逻辑冲突
+                if(s.deathTimer) clearTimeout(s.deathTimer);
+
                 if(s.element && s.element.parentNode) {
                     s.element.parentNode.removeChild(s.element);
                 }
@@ -454,10 +512,11 @@
             }
         }
 
+        // 处理漏掉/错误
         function handleMiss() {
             state.missed++;
             updateHUD();
-            // Flash screen red
+            // 屏幕闪红
             document.body.style.backgroundColor = '#550000';
             setTimeout(() => document.body.style.backgroundColor = '#050505', 100);
 
@@ -466,6 +525,18 @@
             }
         }
 
+        // 错误文字提示
+        function showErrorFeedback(x, y) {
+            const el = document.createElement('div');
+            el.className = 'error-feedback';
+            el.innerText = "OVERCLICK!";
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 600);
+        }
+
+        // 点击波纹效果
         function createRipple(x, y) {
             const r = document.createElement('div');
             r.className = 'ripple';
