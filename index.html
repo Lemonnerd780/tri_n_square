@@ -148,13 +148,13 @@
     <!-- 弹窗 1: 开始 -->
     <div id="modal-start" class="modal">
         <div class="modal-content">
-            <h1>Hiiii</h1>
-            <p>Rules are simple.You can do this:)</p>
+            <h1>HEYYYYY</h1>
+            <p>Rules are simple.</p>
             <div class="rules">
                 <div class="rule-row"><div class="icon-demo triangle"></div><span>Triangle: <b>1 TAP</b></span></div>
                 <div class="rule-row"><div class="icon-demo square"></div><span>Square: <b>2 TAPS</b></span></div>
             </div>
-            <p style="font-size:12px; color:#888;">* Don't double tap single targets! I know what you are thinking about! (btw AI is not gonna take away my job. It didn't think of this lol.)</p>
+            <p style="font-size:12px; color:#888;">* Don't double tap single targets! I know what you are thinking about! (btw AI is not gonna take away my job. It didn't think of this lol)</p>
             <button class="btn" onclick="startGame(1)">START GAME</button>
         </div>
     </div>
@@ -174,7 +174,7 @@
             <h1 style="color: #ff4444;">⚠️ WARNING</h1>
             <p>RULES HAVE CHANGED!<br>CONTROLS FLIPPED.</p>
             <div class="rules" style="background: rgba(100,0,0,0.3);">
-                <!-- 图标样式已修改为默认蓝色，不再强制红色 -->
+                <!-- 图标样式保持蓝色 -->
                 <div class="rule-row"><div class="icon-demo triangle"></div><span style="color:#ffaaaa">Triangle: <b>2 TAPS</b></span></div>
                 <div class="rule-row"><div class="icon-demo square"></div><span style="color:#ffaaaa">Square: <b>1 TAP</b></span></div>
             </div>
@@ -191,11 +191,11 @@
         </div>
     </div>
 
-    <!-- 弹窗 5: 通关 (新增) -->
+    <!-- 弹窗 5: 通关 -->
     <div id="modal-victory" class="modal" style="display: none;">
         <div class="modal-content" style="border-color: #ffd700; box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);">
             <h1 style="color: #ffd700;">CHAMPION!</h1>
-            <p>You have beaten the system.<br>Now you can ask Judy for a reward;)</p>
+            <p>Wooooo! You have beaten the system.<br>Now you can ask Judy for a reward;)</p>
             <button class="btn" style="background: #ffd700; color: #000;" onclick="location.reload()">PLAY AGAIN</button>
         </div>
     </div>
@@ -205,8 +205,8 @@
         const CONFIG = {
             maxMissed: 5,
             levelTime: 30,
-            doubleTapTime: 350, // 双击判定的时间窗口 (ms)
-            shapeSize: 85 // 用于碰撞检测的预估尺寸 (比实际略大一点以留空隙)
+            doubleTapTime: 420, // 优化：由350ms增加到420ms，提升判定灵敏度和容错率
+            shapeSize: 85 // 用于碰撞检测的预估尺寸
         };
 
         // --- 全局状态 ---
@@ -270,7 +270,12 @@
         }
 
         function retryLevel() {
-            startGame(state.level);
+            // 规则修改：如果第6关失败，退回到第4关
+            if (state.level === 6) {
+                startGame(4);
+            } else {
+                startGame(state.level);
+            }
         }
 
         function finishLevel(success) {
@@ -290,7 +295,11 @@
                 }
             } else {
                 // 失败
-                document.getElementById('msg-fail').innerText = `Missed ${state.missed} targets.`;
+                let failText = `Missed ${state.missed} targets.`;
+                if(state.level === 6) {
+                    failText += "\n(Back to Level 4)"; // 提示用户将回退
+                }
+                document.getElementById('msg-fail').innerText = failText;
                 document.getElementById('modal-gameover').style.display = 'flex';
             }
         }
@@ -318,9 +327,9 @@
                 spawnInterval = 900 - ((state.level - 1) * 120); // 900 -> 420
                 maxLife = 3000 - ((state.level - 1) * 300);      // 3000 -> 1800
             } else {
-                // 第6关 (最终关) - 难度已微调
-                spawnInterval = 550; // 生成速度
-                maxLife = 1600;      // 存活时间
+                // 第6关 (最终关) - 提速
+                spawnInterval = 400; // 生成速度提升 (原550)
+                maxLife = 1300;      // 存活时间减少 (原1600)
             }
 
             // 2. 生成逻辑
@@ -381,20 +390,19 @@
                 // 检查是否与现有图形重叠
                 isOverlapping = false;
                 for (let s of state.shapes) {
-                    // 简单的距离检查 (x,y是左上角，这里取中心点距离)
+                    // 简单的距离检查
                     const dx = (x + shapeSize/2) - (s.x + shapeSize/2);
                     const dy = (y + shapeSize/2) - (s.y + shapeSize/2);
                     const dist = Math.sqrt(dx*dx + dy*dy);
                     
-                    if (dist < shapeSize + 10) { // 保持至少10px间距
+                    if (dist < shapeSize + 10) { 
                         isOverlapping = true;
                         break;
                     }
                 }
             }
 
-            // 如果试了15次还是没地儿放，这帧就放弃生成，避免重叠
-            if (isOverlapping) return;
+            if (isOverlapping) return; // 没空位则放弃本帧生成
 
             // --- 创建元素 ---
             const el = document.createElement('div');
@@ -403,7 +411,6 @@
             el.style.top = y + 'px';
 
             gameArea.appendChild(el);
-            // 下一帧添加active类以触发出现动画
             requestAnimationFrame(() => el.classList.add('active'));
 
             const shapeObj = { 
@@ -456,7 +463,8 @@
                         el.style.filter = 'grayscale(100%)';
                         el.style.transform = 'scale(0.9)';
 
-                        // 延迟判定成功，给用户时间去犯错（如果他点了第二下）
+                        // 延迟判定成功
+                        // 注意：这里延迟时间也稍微加长，配合 doubleTapTime 的增加
                         shape.deathTimer = setTimeout(() => {
                             removeShape(shape.id); // 真正的成功
                         }, CONFIG.doubleTapTime + 50); 
@@ -488,15 +496,11 @@
 
         // --- 辅助函数 ---
 
-        // 移除图形（包含清理工作）
         function removeShape(id) {
             const idx = state.shapes.findIndex(s => s.id === id);
             if(idx !== -1) {
                 const s = state.shapes[idx];
-                
-                // 清理定时器，防止逻辑冲突
                 if(s.deathTimer) clearTimeout(s.deathTimer);
-
                 if(s.element && s.element.parentNode) {
                     s.element.parentNode.removeChild(s.element);
                 }
@@ -504,20 +508,16 @@
             }
         }
 
-        // 处理漏掉/错误
         function handleMiss() {
             state.missed++;
             updateHUD();
-            // 屏幕闪红
             document.body.style.backgroundColor = '#550000';
             setTimeout(() => document.body.style.backgroundColor = '#050505', 100);
-
             if(state.missed >= CONFIG.maxMissed) {
                 finishLevel(false);
             }
         }
 
-        // 错误文字提示
         function showErrorFeedback(x, y) {
             const el = document.createElement('div');
             el.className = 'error-feedback';
@@ -528,7 +528,6 @@
             setTimeout(() => el.remove(), 600);
         }
 
-        // 点击波纹效果
         function createRipple(x, y) {
             const r = document.createElement('div');
             r.className = 'ripple';
