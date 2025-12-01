@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Neon Reflex Fixed</title>
+    <style>
+        /* --- 基础设置 --- */
+        body {
+            margin: 0; padding: 0;
+            background-color: #050505;
+            overflow: hidden;
+            font-family: sans-serif;
+            touch-action: none; /* 禁止缩放和滚动 */
+            user-select: none;
+            -webkit-user-select: none;
+            width: 100vw; height: 100vh;
+        }
+
+        /* 游戏主舞台 */
+        #game-area {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1; /* 确保在背景之上 */
+            overflow: hidden;
+        }
+
+        /* 顶部 HUD 面板 */
+        #ui-panel {
+            position: absolute;
+            top: 0; left: 0; width: 100%;
+            padding: 10px 20px;
+            padding-top: max(10px, env(safe-area-inset-top)); /* 适配刘海屏 */
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20; /* 最高层级 */
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+            pointer-events: none; /* 让点击穿透面板 */
+        }
+
+        .hud-text {
+            color: #00d2ff;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 0 0 5px rgba(0, 210, 255, 0.8);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .hud-label { font-size: 10px; color: #888; margin-bottom: 2px; }
+
+        /* --- 弹窗样式 --- */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: flex; justify-content: center; align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: #111;
+            border: 2px solid #00d2ff;
+            border-radius: 12px;
+            padding: 25px;
+            width: 80%; max-width: 320px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);
+        }
+
+        h1 { margin: 0 0 15px 0; color: #00d2ff; font-size: 24px; text-transform: uppercase; }
+        p { color: #ccc; font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+        
+        .btn {
+            background: #0044aa; color: white;
+            padding: 12px 30px; border-radius: 50px;
+            border: none; font-weight: bold; font-size: 16px;
+            margin-top: 10px; cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 100, 255, 0.5);
+        }
+        .btn:active { transform: scale(0.95); }
+
+        /* 规则图标说明 */
+        .rules { text-align: left; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+        .rule-row { display: flex; align-items: center; margin: 8px 0; font-size: 14px; }
+        .icon-demo { width: 14px; height: 14px; margin-right: 10px; display: inline-block; }
+        
+        /* --- 图形样式 --- */
+        .shape {
+            position: absolute;
+            /* 关键修复：初始不缩放为0，防止动画失败看不见 */
+            opacity: 0; 
+            transform: scale(0.5);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+            will-change: transform, opacity;
+            /* 增大点击判定区域 */
+        }
+
+        /* 激活状态（由JS添加） */
+        .shape.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* 正方形 */
+        .square {
+            width: 70px; height: 70px;
+            background: rgba(0, 60, 150, 0.9);
+            border: 2px solid #00d2ff;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+            border-radius: 4px;
+        }
+
+        /* 三角形 - 使用 clip-path 切割 */
+        .triangle {
+            width: 70px; height: 70px;
+            background: linear-gradient(180deg, #00d2ff 0%, #0044aa 100%);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            /* 移除 border，因为 clip-path 会切掉边框，改用 filter 发光 */
+            filter: drop-shadow(0 0 5px rgba(0, 210, 255, 0.8));
+        }
+
+        /* 最后一关的特殊样式 */
+        .danger-mode .triangle { background: linear-gradient(180deg, #00d2ff 0%, #0044aa 100%); }
+        .danger-mode .square { border-color: #00d2ff; background: #0044aa(100, 0, 0, 0.8); }
+
+        /* 点击波纹特效 */
+        .ripple {
+            position: absolute;
+            width: 20px; height: 20px;
+            background: white; border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: rippleAnim 0.4s linear forwards;
+            z-index: 99;
+        }
+        @keyframes rippleAnim {
+            0% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(5); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- HUD -->
+    <div id="ui-panel">
+        <div class="hud-text"><span class="hud-label">LEVEL</span><span id="txt-level">1/6</span></div>
+        <div class="hud-text"><span class="hud-label">TIME</span><span id="txt-time">30</span></div>
+        <div class="hud-text"><span class="hud-label">MISSED</span><span id="txt-miss">0/5</span></div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="game-area"></div>
+
+    <!-- 1. Start Modal -->
+    <div id="modal-start" class="modal">
+        <div class="modal-content">
+            <h1>Whac-A-Mole Plus</h1>
+            <p>Tap shapes before they vanish. You can do this;)</p>
+            <div class="rules">
+                <div class="rule-row">
+                    <div class="icon-demo triangle"></div>
+                    <span>Triangle: <b>1 Tap</b></span>
+                </div>
+                <div class="rule-row">
+                    <div class="icon-demo square"></div>
+                    <span>Square: <b>2 Taps</b></span>
+                </div>
+            </div>
+            <div class="btn" onclick="startGame(1)">START GAME</div>
+        </div>
+    </div>
+
+    <!-- 2. Next Level Modal -->
+    <div id="modal-level" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h1>Level Clear</h1>
+            <p>Woooo! Great job! Speed is increasingggg.</p>
+            <div class="btn" onclick="nextLevel()">CONTINUE</div>
+        </div>
+    </div>
+
+    <!-- 3. Final Level Warning -->
+    <div id="modal-final" class="modal" style="display: none;">
+        <div class="modal-content" style="border-color: #ff4444; box-shadow: 0 0 20px #ff0000;">
+            <h1 style="color: #ff4444;">⚠️ WARNING</h1>
+            <p>THE RULE HAS CHANGED!<br>CONTROLS FLIPPED.</p>
+            <div class="rules" style="background: rgba(100,0,0,0.2);">
+                <div class="rule-row">
+                    <div class="icon-demo triangle" style="background: #ff4444;"></div>
+                    <span style="color:#ffaaaa">Triangle: <b>2 TAPS</b></span>
+                </div>
+                <div class="rule-row">
+                    <div class="icon-demo square" style="border-color:#ff4444"></div>
+                    <span style="color:#ffaaaa">Square: <b>1 TAP</b></span>
+                </div>
+            </div>
+            <div class="btn" style="background: #cc0000;" onclick="startGame(6)">I AM READY</div>
+        </div>
+    </div>
+
+    <!-- 4. Game Over Modal -->
+    <div id="modal-gameover" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h1 style="color: #888;">Mission Failed</h1>
+            <p id="msg-fail">Awwwww too many shapes missed:(</p>
+            <div class="btn" onclick="retryLevel()">RETRY?</div>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Config ---
+        const CONFIG = {
+            maxMissed: 5,
+            levelTime: 30, // seconds
+            doubleTapTime: 350 // ms
+        };
+
+        // --- Global State ---
+        let state = {
+            level: 1,
+            missed: 0,
+            timeLeft: 30,
+            isPlaying: false,
+            shapes: [],     // Array of shape objects
+            idCounter: 0,
+            lastFrameTime: 0,
+            spawnTimer: 0
+        };
+
+        let timerInterval = null;
+        let animationFrame = null;
+
+        // --- DOM Elements ---
+        const gameArea = document.getElementById('game-area');
+        const txtLevel = document.getElementById('txt-level');
+        const txtTime = document.getElementById('txt-time');
+        const txtMiss = document.getElementById('txt-miss');
+
+        // --- Core Functions ---
+
+        function startGame(level) {
+            // Hide all modals
+            document.querySelectorAll('.modal').forEach(el => el.style.display = 'none');
+            
+            // Apply Red Theme for Level 6
+            if(level === 6) document.body.classList.add('danger-mode');
+            else document.body.classList.remove('danger-mode');
+
+            // Reset State
+            state.level = level;
+            state.missed = 0;
+            state.timeLeft = CONFIG.levelTime;
+            state.isPlaying = true;
+            state.shapes = [];
+            state.spawnTimer = 9999; // Force immediate spawn on first frame
+            gameArea.innerHTML = ''; // Clear board
+
+            updateHUD();
+
+            // Start Timer
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                state.timeLeft--;
+                updateHUD();
+                if(state.timeLeft <= 0) finishLevel(true);
+            }, 1000);
+
+            // Start Loop
+            if(animationFrame) cancelAnimationFrame(animationFrame);
+            state.lastFrameTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function nextLevel() {
+            if(state.level < 5) startGame(state.level + 1);
+            else if(state.level === 5) {
+                // Show Final Warning
+                document.getElementById('modal-level').style.display = 'none';
+                document.getElementById('modal-final').style.display = 'flex';
+            }
+        }
+
+        function retryLevel() {
+            startGame(state.level);
+        }
+
+        function finishLevel(success) {
+            state.isPlaying = false;
+            clearInterval(timerInterval);
+            cancelAnimationFrame(animationFrame);
+
+            if(success) {
+                if(state.level === 6) {
+                    // Victory
+                    document.querySelector('#modal-level h1').innerText = "VICTORY";
+                    document.querySelector('#modal-level p').innerText = "Congrats! Now you can ask Judy for a reward;)";
+                    document.querySelector('#modal-level .btn').innerText = "PLAY AGAIN";
+                    document.querySelector('#modal-level .btn').onclick = () => location.reload();
+                    document.getElementById('modal-level').style.display = 'flex';
+                } else {
+                    // Next Level
+                    document.querySelector('#modal-level h1').innerText = "LEVEL COMPLETE";
+                    document.querySelector('#modal-level p').innerText = `Missed: ${state.missed}`;
+                    document.querySelector('#modal-level .btn').innerText = "CONTINUE";
+                    document.querySelector('#modal-level .btn').onclick = nextLevel;
+                    document.getElementById('modal-level').style.display = 'flex';
+                }
+            } else {
+                // Failed
+                document.getElementById('msg-fail').innerText = `Missed ${state.missed} shapes.`;
+                document.getElementById('modal-gameover').style.display = 'flex';
+            }
+        }
+
+        function updateHUD() {
+            txtLevel.innerText = `${state.level}/6`;
+            txtTime.innerText = state.timeLeft;
+            txtMiss.innerText = `${state.missed}/${CONFIG.maxMissed}`;
+            txtMiss.style.color = state.missed >= 3 ? '#ff4444' : '#00d2ff';
+        }
+
+        // --- Game Loop ---
+
+        function gameLoop(now) {
+            if(!state.isPlaying) return;
+
+            const dt = now - state.lastFrameTime;
+            state.lastFrameTime = now;
+
+            // 1. Calculate Spawn Rate
+            // Level 1: 900ms -> Level 6: 250ms
+            let spawnInterval = 900 - ((state.level - 1) * 120);
+            if(state.level === 6) spawnInterval = 250;
+            if(spawnInterval < 200) spawnInterval = 200;
+
+            // 2. Calculate Life Time (How fast they fade)
+            // Level 1: 3000ms -> Level 6: 1200ms
+            let maxLife = 3000 - ((state.level - 1) * 300);
+            if(state.level === 6) maxLife = 1200;
+
+            // 3. Spawning Logic
+            state.spawnTimer += dt;
+            if(state.spawnTimer > spawnInterval) {
+                spawnShape(maxLife);
+                state.spawnTimer = 0 - (Math.random() * 200); // Add randomness
+            }
+
+            // 4. Update Shapes
+            const shapesToRemove = [];
+            state.shapes.forEach(shape => {
+                shape.life -= dt;
+                
+                // Fade out effect
+                const opacity = shape.life / shape.maxLife;
+                if(shape.element) shape.element.style.opacity = opacity;
+
+                if(shape.life <= 0) {
+                    shapesToRemove.push(shape.id);
+                    handleMiss();
+                }
+            });
+
+            // Cleanup
+            shapesToRemove.forEach(id => removeShape(id));
+
+            animationFrame = requestAnimationFrame(gameLoop);
+        }
+
+        function spawnShape(maxLife) {
+            const id = ++state.idCounter;
+            const isSquare = Math.random() > 0.5;
+            
+            const el = document.createElement('div');
+            el.className = `shape ${isSquare ? 'square' : 'triangle'}`;
+            
+            // --- Safe Position Calculation ---
+            const size = 80; // slightly larger than CSS to be safe
+            const screenW = gameArea.clientWidth;
+            const screenH = gameArea.clientHeight;
+            
+            // Padding to avoid edges and top UI
+            const padX = 20;
+            const topSafe = 100; // Leave room for HUD
+            const bottomSafe = 50;
+
+            const x = Math.random() * (screenW - size - padX * 2) + padX;
+            const y = Math.random() * (screenH - size - topSafe - bottomSafe) + topSafe;
+
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+
+            // Bind Events
+            bindInput(el, id, isSquare);
+
+            gameArea.appendChild(el);
+
+            // Add 'active' class next frame to trigger CSS transition properly
+            requestAnimationFrame(() => el.classList.add('active'));
+
+            state.shapes.push({ id, element: el, life: maxLife, maxLife });
+        }
+
+        function bindInput(el, id, isSquare) {
+            let lastTap = 0;
+
+            el.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Stop zoom
+                const touch = e.touches[0];
+                createRipple(touch.clientX, touch.clientY);
+
+                const now = Date.now();
+                const timeDiff = now - lastTap;
+
+                // Determine Rule
+                // Lvl 1-5: Tri=1, Sqr=2
+                // Lvl 6:   Tri=2, Sqr=1
+                let needDouble = false;
+                if(state.level < 6) {
+                    needDouble = isSquare;
+                } else {
+                    needDouble = !isSquare; // Triangle needs double in Lvl 6
+                }
+
+                if(!needDouble) {
+                    // Single Tap Rule
+                    removeShape(id);
+                } else {
+                    // Double Tap Rule
+                    if(timeDiff < CONFIG.doubleTapTime && timeDiff > 0) {
+                        removeShape(id); // Success
+                        lastTap = 0;
+                    } else {
+                        lastTap = now;
+                        // Visual feedback for first tap
+                        el.style.filter = "brightness(2) contrast(150%)";
+                        setTimeout(() => el.style.filter = "", 100);
+                    }
+                }
+            }, { passive: false });
+        }
+
+        function removeShape(id) {
+            const idx = state.shapes.findIndex(s => s.id === id);
+            if(idx !== -1) {
+                const s = state.shapes[idx];
+                if(s.element && s.element.parentNode) {
+                    s.element.parentNode.removeChild(s.element);
+                }
+                state.shapes.splice(idx, 1);
+            }
+        }
+
+        function handleMiss() {
+            state.missed++;
+            updateHUD();
+            // Flash screen red
+            document.body.style.backgroundColor = '#550000';
+            setTimeout(() => document.body.style.backgroundColor = '#050505', 100);
+
+            if(state.missed >= CONFIG.maxMissed) {
+                finishLevel(false);
+            }
+        }
+
+        function createRipple(x, y) {
+            const r = document.createElement('div');
+            r.className = 'ripple';
+            r.style.left = x + 'px';
+            r.style.top = y + 'px';
+            document.body.appendChild(r);
+            setTimeout(() => r.remove(), 400);
+        }
+
+    </script>
+</body>
+</html>
