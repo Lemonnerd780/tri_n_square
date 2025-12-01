@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Neon Reflex Final</title>
+    <title>Whac-A-Mole Plus</title>
     <style>
         /* --- 基础设置 --- */
         body {
@@ -114,11 +114,6 @@
             filter: drop-shadow(0 0 6px rgba(0, 210, 255, 0.6));
         }
 
-        /* 最后一关样式 */
-        .danger-mode .triangle { background: linear-gradient(180deg, #ff4444 0%, #aa0000 100%); }
-        .danger-mode .square { border-color: #ff4444; background: rgba(80, 0, 0, 0.9); }
-        .danger-mode #ui-panel .hud-text { color: #ff4444; text-shadow: 0 0 8px rgba(255, 0, 0, 0.6); }
-
         /* 错误提示文字 */
         .error-feedback {
             position: absolute;
@@ -153,13 +148,13 @@
     <!-- 弹窗 1: 开始 -->
     <div id="modal-start" class="modal">
         <div class="modal-content">
-            <h1>Neon Reflex</h1>
-            <p>Rules are simple.</p>
+            <h1>Hiiii</h1>
+            <p>Rules are simple.You can do this:)</p>
             <div class="rules">
                 <div class="rule-row"><div class="icon-demo triangle"></div><span>Triangle: <b>1 TAP</b></span></div>
                 <div class="rule-row"><div class="icon-demo square"></div><span>Square: <b>2 TAPS</b></span></div>
             </div>
-            <p style="font-size:12px; color:#888;">* Don't double tap single targets!</p>
+            <p style="font-size:12px; color:#888;">* Don't double tap single targets! I know what you are thinking about! (btw AI is not gonna take away my job. It didn't think of this lol.)</p>
             <button class="btn" onclick="startGame(1)">START GAME</button>
         </div>
     </div>
@@ -168,7 +163,7 @@
     <div id="modal-level" class="modal" style="display: none;">
         <div class="modal-content">
             <h1 id="lvl-title">Level Clear</h1>
-            <p id="lvl-msg">Speed increasing...</p>
+            <p id="lvl-msg">Speed increasingggg...</p>
             <button id="lvl-btn" class="btn" onclick="nextLevel()">CONTINUE</button>
         </div>
     </div>
@@ -177,10 +172,11 @@
     <div id="modal-final" class="modal" style="display: none;">
         <div class="modal-content" style="border-color: #ff4444; box-shadow: 0 0 30px rgba(255,0,0,0.3);">
             <h1 style="color: #ff4444;">⚠️ WARNING</h1>
-            <p>SYSTEM CORRUPTED.<br>CONTROLS FLIPPED.</p>
+            <p>RULES HAVE CHANGED!<br>CONTROLS FLIPPED.</p>
             <div class="rules" style="background: rgba(100,0,0,0.3);">
-                <div class="rule-row"><div class="icon-demo triangle" style="background: #ff4444;"></div><span style="color:#ffaaaa">Triangle: <b>2 TAPS</b></span></div>
-                <div class="rule-row"><div class="icon-demo square" style="border-color:#ff4444"></div><span style="color:#ffaaaa">Square: <b>1 TAP</b></span></div>
+                <!-- 图标样式已修改为默认蓝色，不再强制红色 -->
+                <div class="rule-row"><div class="icon-demo triangle"></div><span style="color:#ffaaaa">Triangle: <b>2 TAPS</b></span></div>
+                <div class="rule-row"><div class="icon-demo square"></div><span style="color:#ffaaaa">Square: <b>1 TAP</b></span></div>
             </div>
             <button class="btn" style="background: #cc0000;" onclick="startGame(6)">I AM READY</button>
         </div>
@@ -190,8 +186,8 @@
     <div id="modal-gameover" class="modal" style="display: none;">
         <div class="modal-content" style="border-color: #666;">
             <h1 style="color: #888;">Mission Failed</h1>
-            <p id="msg-fail">Too many errors.</p>
-            <button class="btn" style="background: #444;" onclick="retryLevel()">RETRY</button>
+            <p id="msg-fail">Too many errors:(</p>
+            <button class="btn" style="background: #444;" onclick="retryLevel()">RETRY?</button>
         </div>
     </div>
 
@@ -199,7 +195,7 @@
     <div id="modal-victory" class="modal" style="display: none;">
         <div class="modal-content" style="border-color: #ffd700; box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);">
             <h1 style="color: #ffd700;">CHAMPION!</h1>
-            <p>You have beaten the system.<br>Perfect reflexes.</p>
+            <p>You have beaten the system.<br>Now you can ask Judy for a reward;)</p>
             <button class="btn" style="background: #ffd700; color: #000;" onclick="location.reload()">PLAY AGAIN</button>
         </div>
     </div>
@@ -239,10 +235,6 @@
             // 隐藏所有弹窗
             document.querySelectorAll('.modal').forEach(el => el.style.display = 'none');
             
-            // 设置第6关的红色主题
-            if(level === 6) document.body.classList.add('danger-mode');
-            else document.body.classList.remove('danger-mode');
-
             // 重置数据
             state.level = level;
             state.missed = 0;
@@ -326,9 +318,9 @@
                 spawnInterval = 900 - ((state.level - 1) * 120); // 900 -> 420
                 maxLife = 3000 - ((state.level - 1) * 300);      // 3000 -> 1800
             } else {
-                // 第6关 (最终关) - 已稍微降低速度
-                spawnInterval = 550; // 生成速度 (之前是250太快了)
-                maxLife = 1600;      // 存活时间 (之前是1200太短了)
+                // 第6关 (最终关) - 难度已微调
+                spawnInterval = 550; // 生成速度
+                maxLife = 1600;      // 存活时间
             }
 
             // 2. 生成逻辑
